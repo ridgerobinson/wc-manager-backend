@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const auth = new google.auth.GoogleAuth({
-    keyFile: './assets/wcmanager-585cfa0449d4.json', 
+    keyFile: process.env.GOOGLE_KEY_PATH, 
     scopes: ['https://www.googleapis.com/auth/calendar.events'],
 });
 
