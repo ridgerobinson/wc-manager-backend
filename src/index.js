@@ -26,6 +26,10 @@ AppDataSource.initialize().then(async () => {
         res.send('Hello World');
     });
 
+    app.get('/health', (req, res) => {
+        res.status(200).send('Server is healthy!');
+    });
+
     process.on('uncaughtException', function (error) {
         console.error("Unhandled exception", error);
     });
