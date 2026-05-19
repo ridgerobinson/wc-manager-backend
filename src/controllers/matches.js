@@ -266,6 +266,7 @@ async function getMatches(args) {
                 MT.id MatchTypeId, CASE WHEN MT.knockoutroundid = 0 THEN Lvl.name ELSE CONCAT(Lvl.name, ' - ', KR.name) END MatchTypeName,
                 MS.id MatchStatusId, MS.name MatchStatusName,
                 TeamScore, OpponentScore, CONCAT(M.teamscore, ' - ', M.opponentscore) Score, M.matchresult MatchResult,
+                COALESCE(M.gamenotes, '') GameNotes,
                 CASE WHEN M.matchstatusid = 4 THEN TRUE ELSE EXISTS (SELECT 1 FROM match_roster MR WHERE MR.matchid = M.id) END AS HasRoster,
                 CASE WHEN (COALESCE(M.matchresult, '') <> '') THEN CASE WHEN (M.teamscore <> 0 AND M.matchstatusid = 2) THEN EXISTS (SELECT 1 FROM match_events ME WHERE ME.matchid = M.id) ELSE TRUE END ELSE FALSE END HasStats
             FROM matches M
@@ -496,7 +497,7 @@ async function insertEditMatch(args) {
         return result.rows[0];
     }
 
-    async function insertEditMatch_Query({ pool, EventId, HomeAway, LocationId, MatchDate, MatchId, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts }) {
+    async function insertEditMatch_Query({ pool, EventId, GameNotes, HomeAway, LocationId, MatchDate, MatchId, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts }) {
         var data = [];
         var sql_query = '';
 
@@ -512,12 +513,12 @@ async function insertEditMatch(args) {
         }
 
         if (+MatchId) {
-            data = [ EventId, HomeAway, LocationId, MatchDate, MatchResult, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts, new Date(), MatchId ];
-            sql_query = 'UPDATE matches SET eventid = $1, homeaway = $2, locationid = $3, matchdate = $4, matchresult = $5, matchstatusid = $6, matchtypeid = $7, opponentid = $8, opponentscore = $9, teamscore = $10, track_starts = $11, updated_at = $12 WHERE id = $13 RETURNING *';
+            data = [ EventId, HomeAway, LocationId, MatchDate, MatchResult, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts, GameNotes, new Date(), MatchId ];
+            sql_query = 'UPDATE matches SET eventid = $1, homeaway = $2, locationid = $3, matchdate = $4, matchresult = $5, matchstatusid = $6, matchtypeid = $7, opponentid = $8, opponentscore = $9, teamscore = $10, track_starts = $11, gamenotes = $12, updated_at = $13 WHERE id = $14 RETURNING *';
         }
         else {
-            data = [ EventId, HomeAway, LocationId, MatchDate, MatchResult, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts ];
-            sql_query = 'INSERT INTO matches (eventid, homeaway, locationid, matchdate, matchresult, matchstatusid, matchtypeid, opponentid, opponentscore, teamscore, track_starts) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *';
+            data = [ EventId, HomeAway, LocationId, MatchDate, MatchResult, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts, GameNotes ];
+            sql_query = 'INSERT INTO matches (eventid, homeaway, locationid, matchdate, matchresult, matchstatusid, matchtypeid, opponentid, opponentscore, teamscore, track_starts, gamenotes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *';
         }
 
         var result = await pool.query(sql_query, data);
@@ -530,12 +531,12 @@ async function insertEditMatch(args) {
     }
 
     try {
-        var { EventId, HomeAway, LocationId, MatchDate, MatchId, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts } = args;
+        var { EventId, GameNotes, HomeAway, LocationId, MatchDate, MatchId, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts } = args;
 
         var pool = await StartPT();
 
         // InsertEdit match to DB
-            var Match = await insertEditMatch_Query({ pool, EventId, HomeAway, LocationId, MatchDate, MatchId, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts });
+            var Match = await insertEditMatch_Query({ pool, EventId, GameNotes, HomeAway, LocationId, MatchDate, MatchId, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts });
 
         // InsertEdit match to Calendar
             const details = await getMatchTextDetails({ pool, EventId, OpponentId, LocationId, MatchTypeId });
@@ -550,7 +551,8 @@ async function insertEditMatch(args) {
                 eventColor: details.event_color,
                 matchTypeName: details.match_type_name,
                 locationName: details.location_name,
-                matchStatusId: MatchStatusId
+                matchStatusId: MatchStatusId,
+                gamenotes: GameNotes
             });
 
             // 5. If this was a newly inserted event, save the Google ID back to the matches table
@@ -758,6 +760,7 @@ export var matchesController = () => {
 
     api.post('/insertEditMatch', authenticate, (req, res) => {
         var EventId = req.body.EventId;
+        var GameNotes = req.body.GameNotes;
         var HomeAway = req.body.HomeAway;
         var LocationId = req.body.LocationId;
         var MatchDate = req.body.MatchDate;
@@ -769,7 +772,7 @@ export var matchesController = () => {
         var TeamScore = req.body.TeamScore;
         var TrackStarts = req.body.TrackStarts;
 
-        insertEditMatch({ EventId, HomeAway, LocationId, MatchDate, MatchId, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts }).then(result => {
+        insertEditMatch({ EventId, GameNotes, HomeAway, LocationId, MatchDate, MatchId, MatchStatusId, MatchTypeId, OpponentId, OpponentScore, TeamScore, TrackStarts }).then(result => {
             res.send(result);
         })
     });

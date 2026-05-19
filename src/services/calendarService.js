@@ -21,10 +21,12 @@ export const deleteMatchFromCalendar = async ({ eventId }) => {
     }
 }
 
-export const syncMatchToCalendar = async ({ eventId, matchDate, homeAway, opponentName, teamName, competitionName, eventColor, matchTypeName, locationName, matchStatusId }) => {
+export const syncMatchToCalendar = async ({ eventId, gamenotes = '', matchDate, homeAway, opponentName, teamName, competitionName, eventColor, matchTypeName, locationName, matchStatusId }) => {
     let summary = `${teamName} - ${competitionName} ${homeAway.toLowerCase() === 'away' ? 'at' : 'vs'} ${opponentName} - ${matchTypeName}`;
 
     if (+matchStatusId === 5) summary = `[POSTPONED] - ${summary}`;
+
+    if (gamenotes !== '') summary += ` (${gamenotes})`;
 
     const eventBody = {
         summary: summary,
